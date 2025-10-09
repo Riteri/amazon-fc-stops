@@ -2,7 +2,7 @@ name: build-stops-daily
 
 on:
   schedule:
-    - cron: "7 4 * * *"   # everyday 03:07 UTC
+    - cron: "45 2,18 * * *"   # 04:07 и 16:07 UTC
   workflow_dispatch:
 
 jobs:
