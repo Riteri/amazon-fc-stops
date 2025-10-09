@@ -1,4 +1,4 @@
-# Amazon FC — przystanki autobusowe (scraper → JSON)
+# Amazon FC - przystanki autobusowe (scraper -> JSON)
 
 **TL;DR:** Ten projekt zbiera publiczne informacje o przystankach i trasach autobusowych dla magazynów Amazon (FC) z serwisów `*.transport-fc.eu`, zapisuje je do `data/stops.json` oraz publikuje przez GitHub Pages. Aktualizacja odbywa się automatycznie (GitHub Actions). Front (strona na WordPress) pobiera ten JSON i rysuje najbliższe przystanki na mapie.
 
