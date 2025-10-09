@@ -22,7 +22,7 @@ HEADERS = {
     )
 }
 
-def _build_session():                                 # NEW
+def _build_session():                                 
     s = requests.Session()
     retry = Retry(
         total=3,
@@ -47,7 +47,6 @@ WRO_COMMON = {"wro1", "wro2", "wro3", "wro4"}
 WRO_COMMON_ROZKLADY = "https://wro.transport-fc.eu/rozklady-jazdy/"
 WRO5_ROZKLADY = "https://wro5.transport-fc.eu/rozklady-jazdy/"
 
-# LCJ: семена для обхода
 LCJ_SEEDS = {
     "lcj2": [
         "https://lcj2.transport-fc.eu/",
@@ -70,7 +69,6 @@ DATA_DIR = "data"
 DATA_PATH = os.path.join(DATA_DIR, "stops.json")
 CHANGES_PATH = os.path.join(DATA_DIR, "changes.json")
 
-# Если нужно клонировать общий WRO → WRO1..WRO4 в JSON (без повторного скрапа)
 DUPLICATE_WRO_BY_FC = False
 
 REQUEST_DELAY_SEC = float(os.getenv("REQUEST_DELAY_SEC", "0.7"))  # NEW
@@ -81,11 +79,10 @@ MAX_DEPTH = 2
 # OSM helpers
 # ──────────────────────────────────────────────────────────────────────────────
 
-# fragment вида "#map=19/<lat>/<lon>"
+# fragment  "#map=19/<lat>/<lon>"
 OSM_MAP_FRAG = re.compile(r'(?:^|&)map=\d+/([+-]?[0-9.]+)/([+-]?[0-9.]+)(?:&|$)')
 
 def extract_latlon(href: str):
-    """Вернёт (lat, lon) из OSM-ссылки: поддерживает mlat/mlon и #map=Z/lat/lon."""
     s = href.strip()
     s = re.sub(r'\s+', '', s)
     parts = urlsplit(s)
@@ -101,7 +98,7 @@ def extract_latlon(href: str):
             except ValueError:
                 pass
 
-    # 2) #map=Z/lat/lon в fragment
+     #map=Z/lat/lon in fragment
     if parts.fragment:
         m = OSM_MAP_FRAG.search(parts.fragment)
         if m:
@@ -115,7 +112,7 @@ def extract_latlon(href: str):
 # HTTP / parsing helpers
 # ──────────────────────────────────────────────────────────────────────────────
 
-def get(url: str) -> requests.Response:               # UPDATED
+def get(url: str) -> requests.Response:               
     r = SESSION.get(url, headers=HEADERS, timeout=25)
     r.raise_for_status()
     return r
@@ -136,10 +133,6 @@ def _page_has_osm(html: str) -> bool:
     return "openstreetmap.org" in html
 
 def _bfs_collect(host_base: str, seeds: list[str]) -> list[dict]:
-    """
-    Ограниченный обход по своему хосту с семян: до MAX_DEPTH, с отсечением
-    страниц без openstreetmap.org (по содержимому).
-    """
     host = urlsplit(host_base).netloc
     seen = set()
     queue = deque([(u, 0) for u in seeds])
@@ -158,43 +151,30 @@ def _bfs_collect(host_base: str, seeds: list[str]) -> list[dict]:
             print(f"[crawl] fail {u}: {e}")
             continue
 
-        # если на странице уже есть OSM — сразу оставляем её как кандидат
         if _page_has_osm(html):
             kept.append({"title": "", "url": u})
 
-        # продолжаем углубление
         if depth < MAX_DEPTH:
             for link in _links(html, u, host, content_only=False):
                 v = link["url"].rstrip("/")
                 if v in seen:
                     continue
-                # Отрежем явные рубрики/архивы/пагинацию — но разрешим городские/трассы/посты
                 if any(seg in v for seg in ["/category/", "/kategoria/", "/tag/", "/page/"]):
                     continue
                 queue.append((v, depth + 1))
 
         time.sleep(0.15)
 
-    # дедуп кандидатов
     return list({x["url"]: x for x in kept}.values())
 
 def find_route_pages(fc_sub: str) -> list[dict]:
-    """
-    Возвращает страницы маршрутов (кандидаты) для данного FC.
-    Для LCJ используем ограниченный обход с seeds (root, /trasy/, /rozklady-jazdy/).
-    Для WRO1..4 — один общий список (rozklady).
-    Для WRO5 — rozklady.
-    Остальные — root (с отбором по наличию OSM).
-    """
     fc = fc_sub.lower()
 
-    # Общий WRO (1..4)
     if fc in WRO_COMMON:
         try:
             html = get(WRO_COMMON_ROZKLADY).text
             host = urlsplit(WRO_COMMON_ROZKLADY).netloc
             links = _links(html, WRO_COMMON_ROZKLADY, host, content_only=True)
-            # фильтр
             filtered = []
             base = WRO_COMMON_ROZKLADY.rstrip("/")
             for x in links:
@@ -211,7 +191,6 @@ def find_route_pages(fc_sub: str) -> list[dict]:
             print(f"[WRO common] error: {e}")
             return []
 
-    # WRO5
     if fc == "wro5":
         try:
             html = get(WRO5_ROZKLADY).text
@@ -229,7 +208,6 @@ def find_route_pages(fc_sub: str) -> list[dict]:
             print(f"[WRO5] error: {e}")
             return []
 
-    # LCJ2/3/4 — BFS по своим seed-страницам
     if fc in LCJ_SEEDS:
         seeds = LCJ_SEEDS[fc]
         print(f"[{fc.upper()}] crawl seeds: {', '.join(seeds)}")
@@ -237,7 +215,6 @@ def find_route_pages(fc_sub: str) -> list[dict]:
         print(f"[{fc.upper()}] candidates with OSM: {len(pages)}")
         return pages
 
-    # Остальные — корень; возьмём только те, где реально есть OSM
     root = f"https://{fc}.transport-fc.eu/"
     try:
         html = get(root).text
@@ -271,7 +248,6 @@ def parse_route_page_with_flag(url: str, fc_sub: str, is_wro_common: bool = Fals
             continue
         lat, lon = latlon
         name = a.get_text(strip=True)
-        # Времена HH:MM рядом
         times = []
         parent = a.find_parent(["tr", "li", "p", "div"]) or soup
         for t in re.findall(r"\b\d{1,2}:\d{2}\b", parent.get_text(" ")):
@@ -306,7 +282,6 @@ def scrape_all() -> list[dict]:
     seen_wro_common = False
 
     for sub in FC_SUBS:
-        # если общий WRO уже собран — пропускаем дубликаты wro1..wro4
         if seen_wro_common and sub.lower() in WRO_COMMON:
             print(f"[skip] duplicate WRO alias: {sub}")
             continue
@@ -382,7 +357,7 @@ if __name__ == "__main__":
     os.makedirs(DATA_DIR, exist_ok=True)
 
     prev_wrapper = None
-    if os.path.exists(DATA_PATH):                      # NEW: сохраним «как было», на случай фейла
+    if os.path.exists(DATA_PATH):                      
         try:
             with open(DATA_PATH, "r", encoding="utf-8") as f:
                 prev_wrapper = json.load(f)
@@ -395,7 +370,7 @@ if __name__ == "__main__":
 
     try:
         routes = scrape_all()
-    except Exception as e:                             # NEW: не валим пайплайн
+    except Exception as e:                             
         print("[fatal] scrape_all failed:", e)
         routes = []
 
@@ -410,11 +385,10 @@ if __name__ == "__main__":
                 **s,
             })
 
-    # дедуп
+    # 
     all_stops = dedupe_stops(all_stops)
     all_stops = duplicate_wro_if_needed(all_stops)
 
-    # ── Детерминированная сортировка для красивых Git-диффов ─────────────── NEW
     def _sort_key(s):
         return (
             s.get("fc", ""),
@@ -425,11 +399,9 @@ if __name__ == "__main__":
         )
     all_stops.sort(key=_sort_key)
 
-    # Если мы ничего не собрали (сайт лёг/бан), НЕ перезаписываем прошлую версию
     if not all_stops:
         print("[warn] no stops collected; keep previous data.json as-is")
         if prev_wrapper:
-            # обновим только changes.json, чтобы workflow не падал
             with open(CHANGES_PATH, "w", encoding="utf-8") as f:
                 json.dump({
                     "generated": time.time(),
@@ -440,7 +412,6 @@ if __name__ == "__main__":
             print(f"Diff report saved to {CHANGES_PATH}")
         raise SystemExit(0)
 
-    # Пишем новую версию
     with open(DATA_PATH, "w", encoding="utf-8") as f:
         json.dump({"generated": time.time(), "stops": all_stops}, f, ensure_ascii=False, indent=2)
     print(f"Saved {len(all_stops)} stops to {DATA_PATH}")
