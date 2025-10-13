@@ -1,5 +1,5 @@
 {
-  "generated": 1760325596.1329677,
+  "generated": 1760351832.5644891,
   "stops": [
     {
       "fc": "KTW1",
@@ -1773,7 +1773,7 @@
       "stop_name": "Ruda Śląska Halemba Młyńska 1",
       "lat": 50.242892,
       "lon": 18.838318,
-      "url": "https://www.openstreetmap.org/?mlat= 50.242892&mlon=18.838318#map=19/50.242892/18.838318",
+      "url": "https://www.openstreetmap.org/?mlat=%2050.242892&mlon=18.838318#map=19/50.242892/18.838318",
       "context_times": [
         "17:33",
         "6:03"
@@ -1957,8 +1957,8 @@
       "lon": 14.4551,
       "url": "https://www.openstreetmap.org/?mlat=53.34461420&mlon=14.45510000#map=19/53.34461420/14.45510000",
       "context_times": [
-        "17:45",
-        "5:15"
+        "17:50",
+        "5:20"
       ]
     },
     {
