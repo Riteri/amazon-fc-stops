@@ -1,9 +1,156 @@
 {
-  "generated": 1760930695.4460666,
-  "routes_total_new": 96,
-  "stops_total_new": 1052,
+  "generated": 1760956607.9090414,
+  "routes_total_new": 95,
+  "stops_total_new": 1046,
   "new_routes": [],
-  "removed_routes": [],
-  "new_stops": [],
-  "removed_stops": []
+  "removed_routes": [
+    {
+      "fc": "KTW1",
+      "route_slug": "ktw1-trasa-2-sosnowiec"
+    }
+  ],
+  "new_stops": [
+    {
+      "fc": "KTW3",
+      "route": "7. Rybnik od 19.10",
+      "route_slug": "ktw3-7-rybnik-od-19-10",
+      "stop_name": "Rybnik Ochojec, ul. Rybnicka - koło Żabki",
+      "lat": 50.16584458,
+      "lon": 18.5408216,
+      "source": "https://ktw3.transport-fc.eu/7-rybnik-od-19-10/",
+      "url": "https://www.openstreetmap.org/?mlat=50.16584458&mlon=18.54082160#map=19/50.16584458/18.54082160"
+    },
+    {
+      "fc": "KTW3",
+      "route": "7. Rybnik od 19.10",
+      "route_slug": "ktw3-7-rybnik-od-19-10",
+      "stop_name": "Rybnik, ul. Gliwicka - Golejów - Skrzyżowanie",
+      "lat": 50.14315608,
+      "lon": 18.54893873,
+      "source": "https://ktw3.transport-fc.eu/7-rybnik-od-19-10/",
+      "url": "https://www.openstreetmap.org/?mlat=50.14315608&mlon=18.54893873#map=19/50.14315608/18.54893873"
+    },
+    {
+      "fc": "KTW3",
+      "route": "7. Rybnik od 19.10",
+      "route_slug": "ktw3-7-rybnik-od-19-10",
+      "stop_name": "Rybnik, ul. Gliwicka - Północ Gliwicka Szpital",
+      "lat": 50.10313643,
+      "lon": 18.5467228,
+      "source": "https://ktw3.transport-fc.eu/7-rybnik-od-19-10/",
+      "url": "https://www.openstreetmap.org/?mlat=50.10313643&mlon=18.54672280#map=19/50.10313643/18.54672280"
+    },
+    {
+      "fc": "KTW3",
+      "route": "7. Rybnik od 19.10",
+      "route_slug": "ktw3-7-rybnik-od-19-10",
+      "stop_name": "Wilcza, ul. Rybnicka - skrzyżowanie z ul. Miarki",
+      "lat": 50.19804076,
+      "lon": 18.57985461,
+      "source": "https://ktw3.transport-fc.eu/7-rybnik-od-19-10/",
+      "url": "https://www.openstreetmap.org/?mlat=50.19804076&mlon=18.57985461#map=19/50.19804076/18.57985461"
+    }
+  ],
+  "removed_stops": [
+    {
+      "fc": "KTW1",
+      "route": "TRASA 2 – SOSNOWIEC",
+      "route_slug": "ktw1-trasa-2-sosnowiec",
+      "stop_name": "KTW1",
+      "lat": 50.254794,
+      "lon": 19.203901,
+      "source": "https://ktw1.transport-fc.eu/sosnowiec/",
+      "url": "https://www.openstreetmap.org/?mlat=50.254794&mlon=19.203901#map=19/50.254794/19.203901"
+    },
+    {
+      "fc": "KTW1",
+      "route": "TRASA 2 – SOSNOWIEC",
+      "route_slug": "ktw1-trasa-2-sosnowiec",
+      "stop_name": "KTW1 - przystanek przy wejściu zachodnimKTW1 - зупинка біля західного входу",
+      "lat": 50.254794,
+      "lon": 19.203901,
+      "source": "https://ktw1.transport-fc.eu/sosnowiec/",
+      "url": "https://www.openstreetmap.org/#map=19/50.254794/19.203901"
+    },
+    {
+      "fc": "KTW1",
+      "route": "TRASA 2 – SOSNOWIEC",
+      "route_slug": "ktw1-trasa-2-sosnowiec",
+      "stop_name": "Sosnowiec Dworzec PKP",
+      "lat": 50.278433,
+      "lon": 19.127044,
+      "source": "https://ktw1.transport-fc.eu/sosnowiec/",
+      "url": "https://www.openstreetmap.org/?mlat=50.278433&mlon=19.127044#map=19/50.278433/19.127044"
+    },
+    {
+      "fc": "KTW1",
+      "route": "TRASA 2 – SOSNOWIEC",
+      "route_slug": "ktw1-trasa-2-sosnowiec",
+      "stop_name": "Sosnowiec Grota Roweckiego",
+      "lat": 50.28699,
+      "lon": 19.121796,
+      "source": "https://ktw1.transport-fc.eu/sosnowiec/",
+      "url": "https://www.openstreetmap.org/?mlat=50.286990&mlon=19.121796#map=19/50.286990/19.121796"
+    },
+    {
+      "fc": "KTW1",
+      "route": "TRASA 2 – SOSNOWIEC",
+      "route_slug": "ktw1-trasa-2-sosnowiec",
+      "stop_name": "Sosnowiec Rondo Ludwik",
+      "lat": 50.273109,
+      "lon": 19.145726,
+      "source": "https://ktw1.transport-fc.eu/sosnowiec/",
+      "url": "https://www.openstreetmap.org/?mlat=50.273109&mlon=19.145726#map=19/50.273109/19.145726"
+    },
+    {
+      "fc": "KTW1",
+      "route": "TRASA 2 – SOSNOWIEC",
+      "route_slug": "ktw1-trasa-2-sosnowiec",
+      "stop_name": "Sosnowiec Urząd Miasta",
+      "lat": 50.27796,
+      "lon": 19.134714,
+      "source": "https://ktw1.transport-fc.eu/sosnowiec/",
+      "url": "https://www.openstreetmap.org/?mlat=50.277960&mlon=19.134714#map=19/50.277960/19.134714"
+    },
+    {
+      "fc": "KTW3",
+      "route": "7. Rybnik od 19.10",
+      "route_slug": "ktw3-7-rybnik-od-19-10",
+      "stop_name": "Rybnik Ochojec, ul. Rybnicka - ko?o ?abki",
+      "lat": 50.16584458,
+      "lon": 18.5408216,
+      "source": "https://ktw3.transport-fc.eu/7-rybnik-od-19-10/",
+      "url": "https://www.openstreetmap.org/?mlat=50.16584458&mlon=18.54082160#map=19/50.16584458/18.54082160"
+    },
+    {
+      "fc": "KTW3",
+      "route": "7. Rybnik od 19.10",
+      "route_slug": "ktw3-7-rybnik-od-19-10",
+      "stop_name": "Rybnik, ul. Gliwicka - Golejów - Skrzy?owanie",
+      "lat": 50.14315608,
+      "lon": 18.54893873,
+      "source": "https://ktw3.transport-fc.eu/7-rybnik-od-19-10/",
+      "url": "https://www.openstreetmap.org/?mlat=50.14315608&mlon=18.54893873#map=19/50.14315608/18.54893873"
+    },
+    {
+      "fc": "KTW3",
+      "route": "7. Rybnik od 19.10",
+      "route_slug": "ktw3-7-rybnik-od-19-10",
+      "stop_name": "Rybnik, ul. Gliwicka - Pó?noc Gliwicka Szpital",
+      "lat": 50.10313643,
+      "lon": 18.5467228,
+      "source": "https://ktw3.transport-fc.eu/7-rybnik-od-19-10/",
+      "url": "https://www.openstreetmap.org/?mlat=50.10313643&mlon=18.54672280#map=19/50.10313643/18.54672280"
+    },
+    {
+      "fc": "KTW3",
+      "route": "7. Rybnik od 19.10",
+      "route_slug": "ktw3-7-rybnik-od-19-10",
+      "stop_name": "Wilcza, ul. Rybnicka - skrzy?owanie z ul. Miarki",
+      "lat": 50.19804076,
+      "lon": 18.57985461,
+      "source": "https://ktw3.transport-fc.eu/7-rybnik-od-19-10/",
+      "url": "https://www.openstreetmap.org/?mlat=50.19804076&mlon=18.57985461#map=19/50.19804076/18.57985461"
+    }
+  ]
 }
