@@ -1,5 +1,5 @@
 {
-  "generated": 1761042958.7365644,
+  "generated": 1761103236.3724098,
   "stops": [
     {
       "fc": "KTW1",
@@ -1140,7 +1140,7 @@
       "route": "1. Tarnowskie Góry",
       "route_slug": "ktw3-1-tarnowskie-gory",
       "source": "https://ktw3.transport-fc.eu/tarnowskie-gory/",
-      "stop_name": "Zabrze De Gaullea Ślączka 1",
+      "stop_name": "Zabrze De Gaullea Ślęczka 1",
       "lat": 50.293364,
       "lon": 18.782648,
       "url": "https://www.openstreetmap.org/?mlat=50.293364&mlon=18.782648#map=19/50.293364/18.782648",
@@ -1182,7 +1182,7 @@
       "route": "1. Tarnowskie Góry",
       "route_slug": "ktw3-1-tarnowskie-gory",
       "source": "https://ktw3.transport-fc.eu/tarnowskie-gory/",
-      "stop_name": "Zabrze Osiedle Kopernika Bro?ka",
+      "stop_name": "Zabrze Osiedle Kopernika Brożka",
       "lat": 50.33137,
       "lon": 18.77018,
       "url": "https://www.openstreetmap.org/?mlat=50.331370&mlon=18.770180#map=19/50.331370/18.770180",
@@ -1840,7 +1840,7 @@
       "route": "6. Pyskowice Od 28.09.2025",
       "route_slug": "ktw3-6-pyskowice-od-28-09-2025",
       "source": "https://ktw3.transport-fc.eu/6-pyskowice-od-28-09-2025/",
-      "stop_name": "Gliwice, ul. Toszecka - Przyszówka Skrzy?owanie",
+      "stop_name": "Gliwice, ul. Toszecka - Przyszówka Skrzyżowanie",
       "lat": 52.857092,
       "lon": 14.832396,
       "url": "https://www.openstreetmap.org/?mlat=52.85709200&mlon=14.83239600#map=19/52.85709200/14.83239600",
@@ -1903,118 +1903,6 @@
       "context_times": [
         "17:31",
         "6:03"
-      ]
-    },
-    {
-      "fc": "KTW3",
-      "route": "7. Rybnik od 12.10",
-      "route_slug": "ktw3-7-rybnik-od-12-10",
-      "source": "https://ktw3.transport-fc.eu/7-rybnik/",
-      "stop_name": "KTW3",
-      "lat": 52.902725,
-      "lon": 14.85365,
-      "url": "https://www.openstreetmap.org/?mlat=52.90272500&mlon=14.85365000#map=19/52.90272500/14.85365000",
-      "context_times": [
-        "18:10",
-        "6:40"
-      ]
-    },
-    {
-      "fc": "KTW3",
-      "route": "7. Rybnik od 12.10",
-      "route_slug": "ktw3-7-rybnik-od-12-10",
-      "source": "https://ktw3.transport-fc.eu/7-rybnik/",
-      "stop_name": "Nieborowice Rybnicka",
-      "lat": 50.22397803,
-      "lon": 18.61294658,
-      "url": "https://www.openstreetmap.org/?mlat=50.22397803&mlon=18.61294658#map=19/50.22397803/18.61294658",
-      "context_times": [
-        "17:53",
-        "6:24"
-      ]
-    },
-    {
-      "fc": "KTW3",
-      "route": "7. Rybnik od 12.10",
-      "route_slug": "ktw3-7-rybnik-od-12-10",
-      "source": "https://ktw3.transport-fc.eu/7-rybnik/",
-      "stop_name": "Rybnik Ochojec, ul. Rybnicka - koło Żabki",
-      "lat": 50.16584458,
-      "lon": 18.5408216,
-      "url": "https://www.openstreetmap.org/?mlat=50.16584458&mlon=18.54082160#map=19/50.16584458/18.54082160",
-      "context_times": [
-        "17:44",
-        "6:16"
-      ]
-    },
-    {
-      "fc": "KTW3",
-      "route": "7. Rybnik od 12.10",
-      "route_slug": "ktw3-7-rybnik-od-12-10",
-      "source": "https://ktw3.transport-fc.eu/7-rybnik/",
-      "stop_name": "Rybnik, ul. Gliwicka - Golejów - Skrzyżowanie",
-      "lat": 50.14315608,
-      "lon": 18.54893873,
-      "url": "https://www.openstreetmap.org/?mlat=50.14315608&mlon=18.54893873#map=19/50.14315608/18.54893873",
-      "context_times": [
-        "17:40",
-        "6:12"
-      ]
-    },
-    {
-      "fc": "KTW3",
-      "route": "7. Rybnik od 12.10",
-      "route_slug": "ktw3-7-rybnik-od-12-10",
-      "source": "https://ktw3.transport-fc.eu/7-rybnik/",
-      "stop_name": "Rybnik, ul. Gliwicka - Północ Gliwicka Szpital",
-      "lat": 50.10313643,
-      "lon": 18.5467228,
-      "url": "https://www.openstreetmap.org/?mlat=50.10313643&mlon=18.54672280#map=19/50.10313643/18.54672280",
-      "context_times": [
-        "17:33",
-        "6:06"
-      ]
-    },
-    {
-      "fc": "KTW3",
-      "route": "7. Rybnik od 12.10",
-      "route_slug": "ktw3-7-rybnik-od-12-10",
-      "source": "https://ktw3.transport-fc.eu/7-rybnik/",
-      "stop_name": "Rybnik, ul. Jana Kotucza - Smolna Kotucza",
-      "lat": 50.09462374,
-      "lon": 18.528311,
-      "url": "https://www.openstreetmap.org/?mlat=50.09462374&mlon=18.52831100#map=19/50.09462374/18.52831100",
-      "context_times": [
-        "17:28",
-        "6:01"
-      ]
-    },
-    {
-      "fc": "KTW3",
-      "route": "7. Rybnik od 12.10",
-      "route_slug": "ktw3-7-rybnik-od-12-10",
-      "source": "https://ktw3.transport-fc.eu/7-rybnik/",
-      "stop_name": "Rybnik, ul. Wodzisławska - Smolna Osiedle",
-      "lat": 50.086598,
-      "lon": 18.530361,
-      "url": "https://www.openstreetmap.org/?mlat=50.086598&mlon=18.530361#map=19/50.086598/18.530361",
-      "context_times": [
-        "17:24",
-        "5:57"
-      ]
-    },
-    {
-      "fc": "KTW3",
-      "route": "7. Rybnik od 12.10",
-      "route_slug": "ktw3-7-rybnik-od-12-10",
-      "source": "https://ktw3.transport-fc.eu/7-rybnik/",
-      "stop_name": "Wilcza, ul. Rybnicka - skrzyżowanie z ul. Miarki",
-      "lat": 50.19804076,
-      "lon": 18.57985461,
-      "url": "https://www.openstreetmap.org/?mlat=50.19804076&mlon=18.57985461#map=19/50.19804076/18.57985461",
-      "context_times": [
-        "17:48",
-        "6:20"
       ]
     },
     {
