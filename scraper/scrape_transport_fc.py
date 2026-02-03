@@ -3,14 +3,16 @@ import json
 import os
 import re
 import time
-from collections import deque
-from urllib.parse import urlsplit, parse_qs, urljoin
+from collections import defaultdict, deque
+from io import BytesIO
+from urllib.parse import urlsplit, parse_qs, urljoin, unquote
 
 import requests
 from requests.adapters import HTTPAdapter            
 from urllib3.util.retry import Retry 
 from bs4 import BeautifulSoup as BS
 from slugify import slugify
+import pdfplumber
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Config
@@ -68,12 +70,17 @@ LCJ_SEEDS = {
 DATA_DIR = "data"
 DATA_PATH = os.path.join(DATA_DIR, "stops.json")
 CHANGES_PATH = os.path.join(DATA_DIR, "changes.json")
+GEOCODE_CACHE_PATH = os.path.join(DATA_DIR, "geocode_cache.json")
 
 DUPLICATE_WRO_BY_FC = False
 
 REQUEST_DELAY_SEC = float(os.getenv("REQUEST_DELAY_SEC", "0.7"))  # NEW
 MAX_PAGES_PER_HOST = 300
 MAX_DEPTH = 2 
+GEOCODE_DELAY_SEC = float(os.getenv("GEOCODE_DELAY_SEC", "1.1"))
+GEOCODE_ENABLED = os.getenv("GEOCODE_ENABLED", "1") != "0"
+
+EMPLOYEE_TRANSPORT_URL = "https://transport-fc.pl/employee-transport.html"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # OSM helpers
@@ -81,6 +88,10 @@ MAX_DEPTH = 2
 
 # fragment  "#map=19/<lat>/<lon>"
 OSM_MAP_FRAG = re.compile(r'(?:^|&)map=\d+/([+-]?[0-9.]+)/([+-]?[0-9.]+)(?:&|$)')
+LATLON_INLINE = re.compile(
+    r"(?P<lat>[+-]?\d{1,2}[.,]\d{4,})\s*[,;/\s]\s*(?P<lon>[+-]?\d{1,3}[.,]\d{4,})"
+)
+TIME_RE = re.compile(r"\b\d{1,2}[:.]\d{2}\b")
 
 def extract_latlon(href: str):
     s = href.strip()
@@ -108,6 +119,22 @@ def extract_latlon(href: str):
                 pass
     return None
 
+def extract_latlon_from_text(text: str):
+    match = LATLON_INLINE.search(text)
+    if not match:
+        return None
+    try:
+        lat = float(match.group("lat").replace(",", "."))
+        lon = float(match.group("lon").replace(",", "."))
+        return lat, lon
+    except ValueError:
+        return None
+
+def normalize_stop_name(name: str) -> str:
+    cleaned = re.sub(r"\s+", " ", name).strip().lower()
+    cleaned = re.sub(r"[^\w\s-]", "", cleaned)
+    return cleaned
+
 # ──────────────────────────────────────────────────────────────────────────────
 # HTTP / parsing helpers
 # ──────────────────────────────────────────────────────────────────────────────
@@ -116,6 +143,67 @@ def get(url: str) -> requests.Response:
     r = SESSION.get(url, headers=HEADERS, timeout=25)
     r.raise_for_status()
     return r
+
+def load_geocode_cache(path: str) -> dict:
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+def save_geocode_cache(path: str, cache: dict) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(cache, f, ensure_ascii=False, indent=2)
+
+def geocode_stop(name: str, cache: dict) -> tuple[float, float] | None:
+    if not GEOCODE_ENABLED:
+        return None
+    key = normalize_stop_name(name)
+    if key in cache:
+        cached = cache[key]
+        if isinstance(cached, dict) and "lat" in cached and "lon" in cached:
+            return cached["lat"], cached["lon"]
+        return None
+
+    params = {
+        "format": "json",
+        "limit": 1,
+        "q": f"{name}, Poland",
+        "addressdetails": 0,
+        "countrycodes": "pl",
+    }
+    try:
+        resp = SESSION.get(
+            "https://nominatim.openstreetmap.org/search",
+            params=params,
+            headers=HEADERS,
+            timeout=25,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception as exc:
+        print(f"[geocode] fail {name}: {exc}")
+        cache[key] = {"lat": None, "lon": None}
+        return None
+
+    if not data:
+        cache[key] = {"lat": None, "lon": None}
+        return None
+
+    try:
+        lat = float(data[0]["lat"])
+        lon = float(data[0]["lon"])
+    except Exception:
+        cache[key] = {"lat": None, "lon": None}
+        return None
+
+    cache[key] = {"lat": lat, "lon": lon}
+    time.sleep(GEOCODE_DELAY_SEC)
+    return lat, lon
 
 def _links(html: str, base_url: str, host: str, content_only: bool = False):
     soup = BS(html, "html.parser")
@@ -131,6 +219,107 @@ def _links(html: str, base_url: str, host: str, content_only: bool = False):
 
 def _page_has_osm(html: str) -> bool:
     return "openstreetmap.org" in html
+
+def _extract_pdf_links(html: str, base_url: str) -> list[dict]:
+    soup = BS(html, "html.parser")
+    out = []
+    for a in soup.find_all("a", href=True):
+        href = urljoin(base_url, a["href"])
+        if href.lower().endswith(".pdf"):
+            out.append({
+                "title": a.get_text(strip=True),
+                "url": href,
+            })
+    return list({x["url"]: x for x in out}.values())
+
+def detect_fc_from_text(text: str) -> str | None:
+    lowered = text.lower()
+    for fc in FC_SUBS:
+        if fc in lowered:
+            return fc.upper()
+    return None
+
+def infer_route_title_from_pdf(url: str, first_lines: list[str], link_title: str | None = None) -> str:
+    filename = os.path.basename(urlsplit(url).path)
+    base = re.sub(r"\.pdf$", "", unquote(filename), flags=re.IGNORECASE)
+    base = base.replace("_", " ").replace("-", " ").strip()
+    if link_title and link_title.strip():
+        return link_title.strip()
+    for line in first_lines:
+        if len(line) >= 4 and any(ch.isalpha() for ch in line):
+            return line.strip()
+    return base or url
+
+def parse_pdf_stop_lines(text: str) -> list[dict]:
+    stops = []
+    for raw_line in text.splitlines():
+        line = re.sub(r"\s+", " ", raw_line).strip()
+        if not line:
+            continue
+        if len(line) < 3:
+            continue
+        if "rozklad" in line.lower() or "godz" in line.lower() or "legenda" in line.lower():
+            continue
+        if line.lower().startswith(("linia", "trasa", "route")):
+            continue
+
+        times = []
+        for t in TIME_RE.findall(line):
+            cleaned = t.replace(".", ":")
+            times.append(cleaned)
+
+        latlon = extract_latlon_from_text(line)
+        name_part = TIME_RE.sub("", line)
+        if latlon:
+            name_part = LATLON_INLINE.sub("", name_part)
+
+        name_part = re.sub(r"\s+", " ", name_part)
+        name_part = re.sub(r"^[\d\W_]+", "", name_part)
+        name_part = name_part.strip(" -–:;|")
+        if not name_part or len(name_part) < 3:
+            continue
+
+        stops.append({
+            "stop_name": name_part,
+            "context_times": sorted(set(times)),
+            "latlon_inline": latlon,
+        })
+    return stops
+
+def build_prev_stop_index(prev_stops: list[dict] | None) -> dict:
+    index = defaultdict(list)
+    if not prev_stops:
+        return index
+    for stop in prev_stops:
+        name = normalize_stop_name(stop.get("stop_name", ""))
+        if not name:
+            continue
+        entry = {"lat": stop.get("lat"), "lon": stop.get("lon"), "fc": stop.get("fc")}
+        if entry["lat"] is None or entry["lon"] is None:
+            continue
+        index[name].append(entry)
+    return index
+
+def resolve_stop_coordinates(
+    stop_name: str,
+    fc_label: str | None,
+    prev_index: dict,
+    geocode_cache: dict,
+    inline_latlon: tuple[float, float] | None,
+) -> tuple[float, float] | None:
+    if inline_latlon:
+        return inline_latlon
+
+    norm = normalize_stop_name(stop_name)
+    if norm in prev_index:
+        candidates = prev_index[norm]
+        if fc_label:
+            for item in candidates:
+                if item.get("fc") == fc_label:
+                    return item["lat"], item["lon"]
+        return candidates[0]["lat"], candidates[0]["lon"]
+
+    return geocode_stop(stop_name, geocode_cache)
 
 def _bfs_collect(host_base: str, seeds: list[str]) -> list[dict]:
     host = urlsplit(host_base).netloc
@@ -166,6 +355,91 @@ def _bfs_collect(host_base: str, seeds: list[str]) -> list[dict]:
         time.sleep(0.15)
 
     return list({x["url"]: x for x in kept}.values())
+
+def scrape_employee_transport_pdfs(prev_index: dict, geocode_cache: dict) -> list[dict]:
+    try:
+        html = get(EMPLOYEE_TRANSPORT_URL).text
+    except Exception as e:
+        print(f"[employee-transport] fetch error: {e}")
+        return []
+
+    pdf_links = _extract_pdf_links(html, EMPLOYEE_TRANSPORT_URL)
+    if not pdf_links:
+        print("[employee-transport] no PDF links found")
+        return []
+
+    routes = []
+    for link in pdf_links:
+        pdf_url = link["url"]
+        link_title = link.get("title")
+        try:
+            resp = get(pdf_url)
+            pdf_bytes = resp.content
+        except Exception as e:
+            print(f"[employee-transport] download fail {pdf_url}: {e}")
+            continue
+
+        try:
+            with pdfplumber.open(BytesIO(pdf_bytes)) as pdf:
+                texts = [page.extract_text() or "" for page in pdf.pages]
+        except Exception as e:
+            print(f"[employee-transport] parse fail {pdf_url}: {e}")
+            continue
+
+        combined = "\n".join(texts)
+        if not combined.strip():
+            print(f"[employee-transport] empty PDF {pdf_url}")
+            continue
+
+        first_lines = [ln for ln in combined.splitlines() if ln.strip()][:5]
+        route_title = infer_route_title_from_pdf(pdf_url, first_lines, link_title=link_title)
+        fc_label = (
+            detect_fc_from_text(route_title)
+            or detect_fc_from_text(link_title or "")
+            or detect_fc_from_text(pdf_url)
+            or "TRANSPORT-FC"
+        )
+
+        stop_entries = parse_pdf_stop_lines(combined)
+        if not stop_entries:
+            print(f"[employee-transport] no stops parsed for {pdf_url}")
+            continue
+
+        stop_rows = []
+        for entry in stop_entries:
+            coords = resolve_stop_coordinates(
+                entry["stop_name"],
+                fc_label if fc_label != "UNKNOWN" else None,
+                prev_index,
+                geocode_cache,
+                entry.get("latlon_inline"),
+            )
+            if not coords:
+                print(f"[employee-transport] missing coords for {entry['stop_name']} ({pdf_url})")
+                continue
+            lat, lon = coords
+            stop_rows.append({
+                "stop_name": entry["stop_name"],
+                "lat": lat,
+                "lon": lon,
+                "url": pdf_url,
+                "context_times": entry.get("context_times", []),
+            })
+
+        if not stop_rows:
+            print(f"[employee-transport] no geocoded stops for {pdf_url}")
+            continue
+
+        print(f"  [+] {fc_label}: {route_title} → {len(stop_rows)} stops (PDF)")
+        routes.append({
+            "fc": fc_label,
+            "route": route_title,
+            "route_slug": slugify(f"{fc_label.lower()}-{route_title}"),
+            "source": pdf_url,
+            "stops": stop_rows,
+        })
+
+    return routes
 
 def find_route_pages(fc_sub: str) -> list[dict]:
     fc = fc_sub.lower()
@@ -277,9 +551,12 @@ def parse_route_page_with_flag(url: str, fc_sub: str, is_wro_common: bool = Fals
         "stops": stop_rows,
     }
 
-def scrape_all() -> list[dict]:
+def scrape_all(prev_index: dict, geocode_cache: dict) -> list[dict]:
     routes = []
     seen_wro_common = False
+
+    pdf_routes = scrape_employee_transport_pdfs(prev_index, geocode_cache)
+    routes.extend(pdf_routes)
 
     for sub in FC_SUBS:
         if seen_wro_common and sub.lower() in WRO_COMMON:
@@ -368,8 +645,11 @@ if __name__ == "__main__":
     if prev_wrapper and isinstance(prev_wrapper, dict):
         prev = prev_wrapper.get("stops")
 
+    geocode_cache = load_geocode_cache(GEOCODE_CACHE_PATH)
+    prev_index = build_prev_stop_index(prev)
+
     try:
-        routes = scrape_all()
+        routes = scrape_all(prev_index, geocode_cache)
     except Exception as e:                             
         print("[fatal] scrape_all failed:", e)
         routes = []
@@ -415,6 +695,9 @@ if __name__ == "__main__":
     with open(DATA_PATH, "w", encoding="utf-8") as f:
         json.dump({"generated": time.time(), "stops": all_stops}, f, ensure_ascii=False, indent=2)
     print(f"Saved {len(all_stops)} stops to {DATA_PATH}")
+
+    if geocode_cache:
+        save_geocode_cache(GEOCODE_CACHE_PATH, geocode_cache)
 
     changes = {
         "generated": time.time(),
