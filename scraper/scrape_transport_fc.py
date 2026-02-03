@@ -131,9 +131,13 @@ def extract_latlon_from_text(text: str):
         return None
 
 def normalize_stop_name(name: str) -> str:
-    cleaned = re.sub(r"\s+", " ", name).strip().lower()
+    cleaned = name.replace("–", "-").replace("—", "-")
+    cleaned = re.sub(r"\s+", " ", cleaned).strip().lower()
     cleaned = re.sub(r"[^\w\s-]", "", cleaned)
     return cleaned
+
+def normalize_geocode_key(text: str) -> str:
+    return normalize_stop_name(text)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # HTTP / parsing helpers
@@ -159,12 +163,11 @@ def save_geocode_cache(path: str, cache: dict) -> None:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(cache, f, ensure_ascii=False, indent=2)
 
-def geocode_stop(name: str, cache: dict) -> tuple[float, float] | None:
+def geocode_query(query: str, cache: dict, cache_key: str) -> tuple[float, float] | None:
     if not GEOCODE_ENABLED:
         return None
-    key = normalize_stop_name(name)
-    if key in cache:
-        cached = cache[key]
+    if cache_key in cache:
+        cached = cache[cache_key]
         if isinstance(cached, dict) and "lat" in cached and "lon" in cached:
             return cached["lat"], cached["lon"]
         return None
@@ -172,7 +175,7 @@ def geocode_stop(name: str, cache: dict) -> tuple[float, float] | None:
     params = {
         "format": "json",
         "limit": 1,
-        "q": f"{name}, Poland",
+        "q": query,
         "addressdetails": 0,
         "countrycodes": "pl",
     }
@@ -186,24 +189,42 @@ def geocode_stop(name: str, cache: dict) -> tuple[float, float] | None:
         resp.raise_for_status()
         data = resp.json()
     except Exception as exc:
-        print(f"[geocode] fail {name}: {exc}")
-        cache[key] = {"lat": None, "lon": None}
+        print(f"[geocode] fail {query}: {exc}")
+        cache[cache_key] = {"lat": None, "lon": None}
         return None
 
     if not data:
-        cache[key] = {"lat": None, "lon": None}
+        cache[cache_key] = {"lat": None, "lon": None}
         return None
 
     try:
         lat = float(data[0]["lat"])
         lon = float(data[0]["lon"])
     except Exception:
-        cache[key] = {"lat": None, "lon": None}
+        cache[cache_key] = {"lat": None, "lon": None}
         return None
 
-    cache[key] = {"lat": lat, "lon": lon}
+    cache[cache_key] = {"lat": lat, "lon": lon}
     time.sleep(GEOCODE_DELAY_SEC)
     return lat, lon
+
+def geocode_stop_with_fallback(stop_name: str, route_hint: str | None, cache: dict) -> tuple[float, float] | None:
+    if not GEOCODE_ENABLED:
+        return None
+
+    queries = []
+    if route_hint:
+        queries.append(f"{stop_name}, {route_hint}, Poland")
+    queries.append(f"{stop_name}, Poland")
+    if route_hint:
+        queries.append(f"{route_hint}, Poland")
+
+    for query in queries:
+        key = normalize_geocode_key(query)
+        coords = geocode_query(query, cache, key)
+        if coords:
+            return coords
+    return None
 
 def _links(html: str, base_url: str, host: str, content_only: bool = False):
     soup = BS(html, "html.parser")
@@ -232,12 +253,40 @@ def _extract_pdf_links(html: str, base_url: str) -> list[dict]:
             })
     return list({x["url"]: x for x in out}.values())
 
+def parse_employee_transport_links(html: str, base_url: str) -> list[dict]:
+    soup = BS(html, "html.parser")
+    out = []
+    for site in soup.select(".site"):
+        label_node = site.select_one("button span")
+        label_text = label_node.get_text(strip=True) if label_node else ""
+        for a in site.select(".routes a[href]"):
+            href = urljoin(base_url, a["href"])
+            if not href.lower().endswith(".pdf"):
+                continue
+            out.append({
+                "title": a.get_text(strip=True),
+                "url": href,
+                "fc_label": label_text,
+            })
+    return list({x["url"]: x for x in out}.values())
+
 def detect_fc_from_text(text: str) -> str | None:
     lowered = text.lower()
     for fc in FC_SUBS:
         if fc in lowered:
             return fc.upper()
     return None
+
+def normalize_fc_label(text: str | None) -> str | None:
+    if not text:
+        return None
+    tokens = re.findall(r"[A-Z]{2,}\d+", text.upper())
+    for token in tokens:
+        if token.lower() in FC_SUBS:
+            return token
+    if tokens:
+        return tokens[0]
+    return text.strip().upper() if text.strip() else None
 
 def infer_route_title_from_pdf(url: str, first_lines: list[str], link_title: str | None = None) -> str:
     filename = os.path.basename(urlsplit(url).path)
@@ -252,15 +301,35 @@ def infer_route_title_from_pdf(url: str, first_lines: list[str], link_title: str
 
 def parse_pdf_stop_lines(text: str) -> list[dict]:
     stops = []
+    noise_markers = (
+        "transport pracowniczy",
+        "employee transport",
+        "amazon",
+        "grafiki",
+        "rozklad jazdy",
+        "rozkład jazdy",
+        "tabela",
+        "przystanek",
+        "przyjazd",
+        "odjazd",
+        "kierunek",
+        "powrót",
+        "powrot",
+        "uwagi",
+        "zmiany transportowe",
+    )
     for raw_line in text.splitlines():
         line = re.sub(r"\s+", " ", raw_line).strip()
         if not line:
             continue
         if len(line) < 3:
             continue
-        if "rozklad" in line.lower() or "godz" in line.lower() or "legenda" in line.lower():
+        lowered = line.lower()
+        if "rozklad" in lowered or "godz" in lowered or "legenda" in lowered:
             continue
-        if line.lower().startswith(("linia", "trasa", "route")):
+        if lowered.startswith(("linia", "trasa", "route")):
+            continue
+        if any(marker in lowered for marker in noise_markers):
             continue
 
         times = []
@@ -275,6 +344,7 @@ def parse_pdf_stop_lines(text: str) -> list[dict]:
 
         name_part = re.sub(r"\s+", " ", name_part)
         name_part = re.sub(r"^[\d\W_]+", "", name_part)
+        name_part = re.sub(r"\b(przystanek|kierunek|odjazd|przyjazd)\b", "", name_part, flags=re.IGNORECASE)
         name_part = name_part.strip(" -–:;|")
         if not name_part or len(name_part) < 3:
             continue
@@ -306,6 +376,7 @@ def resolve_stop_coordinates(
     prev_index: dict,
     geocode_cache: dict,
     inline_latlon: tuple[float, float] | None,
+    route_hint: str | None,
 ) -> tuple[float, float] | None:
     if inline_latlon:
         return inline_latlon
@@ -319,7 +390,7 @@ def resolve_stop_coordinates(
                     return item["lat"], item["lon"]
         return candidates[0]["lat"], candidates[0]["lon"]
 
-    return geocode_stop(stop_name, geocode_cache)
+    return geocode_stop_with_fallback(stop_name, route_hint, geocode_cache)
 
 def _bfs_collect(host_base: str, seeds: list[str]) -> list[dict]:
     host = urlsplit(host_base).netloc
@@ -363,7 +434,9 @@ def scrape_employee_transport_pdfs(prev_index: dict, geocode_cache: dict) -> lis
         print(f"[employee-transport] fetch error: {e}")
         return []
 
-    pdf_links = _extract_pdf_links(html, EMPLOYEE_TRANSPORT_URL)
+    pdf_links = parse_employee_transport_links(html, EMPLOYEE_TRANSPORT_URL)
+    if not pdf_links:
+        pdf_links = _extract_pdf_links(html, EMPLOYEE_TRANSPORT_URL)
     if not pdf_links:
         print("[employee-transport] no PDF links found")
         return []
@@ -372,6 +445,10 @@ def scrape_employee_transport_pdfs(prev_index: dict, geocode_cache: dict) -> lis
     for link in pdf_links:
         pdf_url = link["url"]
         link_title = link.get("title")
+        if link_title and "zmiany" in link_title.lower():
+            continue
+        if "zmiany" in pdf_url.lower():
+            continue
         try:
             resp = get(pdf_url)
             pdf_bytes = resp.content
@@ -394,7 +471,8 @@ def scrape_employee_transport_pdfs(prev_index: dict, geocode_cache: dict) -> lis
         first_lines = [ln for ln in combined.splitlines() if ln.strip()][:5]
         route_title = infer_route_title_from_pdf(pdf_url, first_lines, link_title=link_title)
         fc_label = (
-            detect_fc_from_text(route_title)
+            normalize_fc_label(link.get("fc_label"))
+            or detect_fc_from_text(route_title)
             or detect_fc_from_text(link_title or "")
             or detect_fc_from_text(pdf_url)
             or "TRANSPORT-FC"
@@ -413,9 +491,12 @@ def scrape_employee_transport_pdfs(prev_index: dict, geocode_cache: dict) -> lis
                 prev_index,
                 geocode_cache,
                 entry.get("latlon_inline"),
+                route_title,
             )
             if not coords:
                 print(f"[employee-transport] missing coords for {entry['stop_name']} ({pdf_url})")
+                coords = geocode_stop_with_fallback(entry["stop_name"], route_title, geocode_cache)
+            if not coords:
                 continue
             lat, lon = coords
             stop_rows.append({
@@ -597,8 +678,8 @@ def make_stop_key(s: dict) -> tuple:
         s.get("fc"),
         s.get("route_slug"),
         s.get("stop_name"),
-        round(float(s.get("lat", 0.0)), 6),
-        round(float(s.get("lon", 0.0)), 6),
+        round(float(s.get("lat") or 0.0), 6),
+        round(float(s.get("lon") or 0.0), 6),
     )
 
 def make_route_key(r: dict) -> tuple:
@@ -674,8 +755,8 @@ if __name__ == "__main__":
             s.get("fc", ""),
             s.get("route_slug", ""),
             s.get("stop_name", ""),
-            round(float(s.get("lat", 0.0)), 6),
-            round(float(s.get("lon", 0.0)), 6),
+            round(float(s.get("lat") or 0.0), 6),
+            round(float(s.get("lon") or 0.0), 6),
         )
     all_stops.sort(key=_sort_key)
 

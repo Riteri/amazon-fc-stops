@@ -44,7 +44,7 @@ Projekt obsługuje **dwa** typy źródeł:
 2. Skrypt **Python** (`scraper/scrape_transport_fc.py`) najpierw parsuje PDF-y z `transport-fc.pl`, a jeśli są dostępne — buduje listy przystanków z treści PDF.  
 3. Jeśli PDF-y nie dostarczają współrzędnych:
    - próbuje dopasować do poprzednich przystanków z `data/stops.json`,  
-   - a następnie (opcjonalnie) używa geokodera Nominatim i zapisuje wynik do cache.  
+   - a następnie (opcjonalnie) używa geokodera Nominatim i zapisuje wynik do cache (w tym fallback do lokalizacji z nazwy trasy/miasta).  
 4. Dodatkowo (fallback) parsowane są strony `*.transport-fc.eu` z linkami OSM.  
 5. Generowane są pliki:  
    - `data/stops.json` – pełna lista przystanków,  
