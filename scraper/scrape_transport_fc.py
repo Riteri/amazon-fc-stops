@@ -239,10 +239,12 @@ def detect_fc_from_text(text: str) -> str | None:
             return fc.upper()
     return None
 
-def infer_route_title_from_pdf(url: str, first_lines: list[str]) -> str:
+def infer_route_title_from_pdf(url: str, first_lines: list[str], link_title: str | None = None) -> str:
     filename = os.path.basename(urlsplit(url).path)
     base = re.sub(r"\.pdf$", "", unquote(filename), flags=re.IGNORECASE)
     base = base.replace("_", " ").replace("-", " ").strip()
+    if link_title and link_title.strip():
+        return link_title.strip()
     for line in first_lines:
         if len(line) >= 4 and any(ch.isalpha() for ch in line):
             return line.strip()
@@ -258,6 +260,8 @@ def parse_pdf_stop_lines(text: str) -> list[dict]:
             continue
         if "rozklad" in line.lower() or "godz" in line.lower() or "legenda" in line.lower():
             continue
+        if line.lower().startswith(("linia", "trasa", "route")):
+            continue
 
         times = []
         for t in TIME_RE.findall(line):
@@ -269,7 +273,9 @@ def parse_pdf_stop_lines(text: str) -> list[dict]:
         if latlon:
             name_part = LATLON_INLINE.sub("", name_part)
 
-        name_part = re.sub(r"\s+", " ", name_part).strip(" -–:;|")
+        name_part = re.sub(r"\s+", " ", name_part)
+        name_part = re.sub(r"^[\d\W_]+", "", name_part)
+        name_part = name_part.strip(" -–:;|")
         if not name_part or len(name_part) < 3:
             continue
 
@@ -365,6 +371,7 @@ def scrape_employee_transport_pdfs(prev_index: dict, geocode_cache: dict) -> lis
     routes = []
     for link in pdf_links:
         pdf_url = link["url"]
+        link_title = link.get("title")
         try:
             resp = get(pdf_url)
             pdf_bytes = resp.content
@@ -385,8 +392,13 @@ def scrape_employee_transport_pdfs(prev_index: dict, geocode_cache: dict) -> lis
             continue
 
         first_lines = [ln for ln in combined.splitlines() if ln.strip()][:5]
-        route_title = infer_route_title_from_pdf(pdf_url, first_lines)
-        fc_label = detect_fc_from_text(route_title) or detect_fc_from_text(pdf_url) or "UNKNOWN"
+        route_title = infer_route_title_from_pdf(pdf_url, first_lines, link_title=link_title)
+        fc_label = (
+            detect_fc_from_text(route_title)
+            or detect_fc_from_text(link_title or "")
+            or detect_fc_from_text(pdf_url)
+            or "TRANSPORT-FC"
+        )
 
         stop_entries = parse_pdf_stop_lines(combined)
         if not stop_entries:
@@ -544,8 +556,7 @@ def scrape_all(prev_index: dict, geocode_cache: dict) -> list[dict]:
     seen_wro_common = False
 
     pdf_routes = scrape_employee_transport_pdfs(prev_index, geocode_cache)
-    if pdf_routes:
-        return pdf_routes
+    routes.extend(pdf_routes)
 
     for sub in FC_SUBS:
         if seen_wro_common and sub.lower() in WRO_COMMON:
