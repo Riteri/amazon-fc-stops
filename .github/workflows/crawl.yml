@@ -1,38 +1,38 @@
-name: build-stops-daily
+# name: build-stops-daily
 
-on:
-  schedule:
-    - cron: "7 2,10 * * *"
-  workflow_dispatch:
+# on:
+#   schedule:
+#     - cron: "7 2,10 * * *"
+#   workflow_dispatch:
 
-jobs:
-  crawl:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      CRAWLER_UA: "NearestStopsBot/1.0 (contact: gavnuq312@gmail.com)"
-      REQUEST_DELAY_SEC: "0.7"
-    steps:
-      - uses: actions/checkout@v4
+# jobs:
+#   crawl:
+#     runs-on: ubuntu-latest
+#     permissions:
+#       contents: write
+#     env:
+#       CRAWLER_UA: "NearestStopsBot/1.0 (contact: gavnuq312@gmail.com)"
+#       REQUEST_DELAY_SEC: "0.7"
+#     steps:
+#       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+#       - uses: actions/setup-python@v5
+#         with:
+#           python-version: '3.11'
 
-      - name: Install deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+#       - name: Install deps
+#         run: |
+#           python -m pip install --upgrade pip
+#           pip install -r requirements.txt
 
-      - name: Run crawler
-        run: |
-          python scraper/scrape_transport_fc.py
+#       - name: Run crawler
+#         run: |
+#           python scraper/scrape_transport_fc.py
 
-      - name: Commit updated JSON
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/stops.json data/changes.json || true
-          git commit -m "chore(data): update stops.json" || echo "No changes to commit"
-          git push
+#       - name: Commit updated JSON
+#         run: |
+#           git config user.name "github-actions[bot]"
+#           git config user.email "github-actions[bot]@users.noreply.github.com"
+#           git add data/stops.json data/changes.json || true
+#           git commit -m "chore(data): update stops.json" || echo "No changes to commit"
+#           git push
